@@ -194,7 +194,7 @@ def search(request):
 
         # Info: If whoosh backend used, setup HAYSTACK_ITERATOR_LOAD_PER_QUERY
         #    to a higher number to speed up
-        post_pks = tuple(posts.values_list("pk", flat=True))
+        post_pks = posts.values_list("pk", flat=True)
         topics = Topic.objects.filter(posts__in=post_pks).distinct()
 
     return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
