@@ -234,9 +234,10 @@ class TopicFromPostResult(object):
 
     def __init__(self, posts):
         self.posts = posts
+        self.count = posts.count()
 
     def __len__(self):
-        return len(self.posts)
+        return self.count
 
     def __getitem__(self, key):
         if isinstance(key, slice):
