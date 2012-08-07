@@ -1,7 +1,6 @@
 import re
 from HTMLParser import HTMLParser
 from postmarkup import render_bbcode
-from django_tools.unittest_utils.print_sql import PrintQueries
 try:
     import markdown
 except ImportError:
