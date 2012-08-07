@@ -14,17 +14,16 @@ from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.translation import ugettext as _
 
-from djangobb_forum.util import build_form, paginate, set_language
-from djangobb_forum.models import Category, Forum, Topic, Post, Profile, Reputation, \
-    Attachment, PostTracking
+from djangobb_forum import settings as forum_settings
 from djangobb_forum.forms import AddPostForm, EditPostForm, UserSearchForm, \
     PostSearchForm, ReputationForm, MailToForm, EssentialsProfileForm, \
     PersonalProfileForm, MessagingProfileForm, PersonalityProfileForm, \
     DisplayProfileForm, PrivacyProfileForm, ReportForm, UploadAvatarForm
+from djangobb_forum.models import Category, Forum, Topic, Post, Profile, Reputation, \
+    Attachment, PostTracking
 from djangobb_forum.templatetags import forum_extras
-from djangobb_forum import settings as forum_settings
-from djangobb_forum.util import smiles, convert_text_to_html, TopicFromPostResult
 from djangobb_forum.templatetags.forum_extras import forum_moderated_by
+from djangobb_forum.util import build_form, paginate, set_language, smiles, convert_text_to_html
 
 from haystack.query import SearchQuerySet, SQ
 from django.contrib import messages
@@ -191,20 +190,13 @@ def search(request):
         posts = query.order_by(order)
 
         if 'topics' in request.GET['show_as']:
-            # FIXME: This very slow on many hits:
-#            topics = []
-#            for post in posts:
-#                if post.object is None:
-#                    posts = posts.exclude(django_id=post.django_id)
-#                elif post.object.topic not in topics:
-#                    if post.object.topic.forum.category.has_access(request.user):
-#                        topics.append(post.object.topic)
-#            return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
+            # Warning: this can be very slow, if e.g. whoosh backent in haystack is used
+            #     and if many posts hits
+            post_pks = tuple(posts.values_list("pk", flat=True))
 
-            # FIXME: This will display double results:
-            return render(request, 'djangobb_forum/search_topics.html', {
-                'results': TopicFromPostResult(posts)
-            })
+            topics = Topic.objects.filter(posts__in=post_pks).distinct()
+
+            return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
         elif 'posts' in request.GET['show_as']:
             return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
 
