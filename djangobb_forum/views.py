@@ -192,19 +192,19 @@ def search(request):
 
         if 'topics' in request.GET['show_as']:
             # FIXME: This very slow on many hits:
-            topics = []
-            for post in posts:
-                if post.object is None:
-                    posts = posts.exclude(django_id=post.django_id)
-                elif post.object.topic not in topics:
-                    if post.object.topic.forum.category.has_access(request.user):
-                        topics.append(post.object.topic)
-            return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
+#            topics = []
+#            for post in posts:
+#                if post.object is None:
+#                    posts = posts.exclude(django_id=post.django_id)
+#                elif post.object.topic not in topics:
+#                    if post.object.topic.forum.category.has_access(request.user):
+#                        topics.append(post.object.topic)
+#            return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
 
             # FIXME: This will display double results:
-            #return render(request, 'djangobb_forum/search_topics.html', {
-            #    'results': TopicFromPostResult(posts)
-            #})
+            return render(request, 'djangobb_forum/search_topics.html', {
+                'results': TopicFromPostResult(posts)
+            })
         elif 'posts' in request.GET['show_as']:
             return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
 

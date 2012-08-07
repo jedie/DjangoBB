@@ -240,8 +240,9 @@ class TopicFromPostResult(object):
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return [self.posts[i].object.topic
-                        for i in xrange(*key.indices(self.count))]
+            topics = [self.posts[i].object.topic for i in xrange(*key.indices(self.count))]
+            topcis = list(set(topics))
+            return topcis
         elif isinstance(key, int):
             return self.posts[key].object.topic
 
