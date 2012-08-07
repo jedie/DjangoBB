@@ -189,16 +189,16 @@ def search(request):
 
         posts = query.order_by(order)
 
-        if 'topics' in request.GET['show_as']:
-            # Info: If whoosh backend used, setup HAYSTACK_ITERATOR_LOAD_PER_QUERY
-            #    to a higher number to speed up
-            post_pks = tuple(posts.values_list("pk", flat=True))
-            topics = Topic.objects.filter(posts__in=post_pks).distinct()
-            return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
-        elif 'posts' in request.GET['show_as']:
+        if request.GET.get("show_as") == "posts":
             return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
 
+        # Info: If whoosh backend used, setup HAYSTACK_ITERATOR_LOAD_PER_QUERY
+        #    to a higher number to speed up
+        post_pks = tuple(posts.values_list("pk", flat=True))
+        topics = Topic.objects.filter(posts__in=post_pks).distinct()
+
     return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
+
 
 
 
