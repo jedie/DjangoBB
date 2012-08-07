@@ -159,7 +159,7 @@ def search(request):
     elif action == 'show_subscriptions':
         topics = topics.filter(subscribers__id=request.user.id)
     elif action == 'show_user':
-        # Show all topics started by the current user
+        # Show all posts from user or topics started by user
         user_id = request.GET.get("user_id", request.user.id)
         user_id = int(user_id)
         posts = Post.objects.filter(user__id=user_id)
