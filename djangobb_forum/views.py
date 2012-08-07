@@ -117,6 +117,15 @@ def search(request):
                 'form': form,
                 })
 
+    if request.GET.get("show_as") == "posts":
+        show_as_posts = True
+        template_name = 'djangobb_forum/search_posts.html'
+    else:
+        show_as_posts = False
+        template_name = 'djangobb_forum/search_topics.html'
+
+    context = {}
+
     #FIXME: show_user for anonymous raise exception, 
     #django bug http://code.djangoproject.com/changeset/14087 :|
     groups = request.user.groups.all() or [] #removed after django > 1.2.3 release
@@ -128,6 +137,7 @@ def search(request):
     if action == 'show_24h':
         date = datetime.today() - timedelta(1)
         topics = topics.filter(created__gte=date)
+        context["topics"] = topics
     elif action == 'show_new':
         try:
             last_read = PostTracking.objects.get(user=request.user).last_read
@@ -138,16 +148,30 @@ def search(request):
         else:
             #searching more than forum_settings.SEARCH_PAGE_SIZE in this way - not good idea :]
             topics = [topic for topic in topics[:forum_settings.SEARCH_PAGE_SIZE] if forum_extras.has_unreads(topic, request.user)]
+        context["topics"] = topics
     elif action == 'show_unanswered':
-        topics = topics.filter(post_count=1)
+        context["topics"] = topics.filter(post_count=1)
     elif action == 'show_subscriptions':
-        topics = topics.filter(subscribers__id=request.user.id)
+        context["topics"] = topics.filter(subscribers__id=request.user.id)
     elif action == 'show_user':
         # Show all topics started by the current user
-        user = request.user
-        if not user.is_authenticated():
-            raise SuspiciousOperation("Only available for authenticated users.")
-        topics = topics.filter(user=user)
+        user_id = request.GET.get("user_id", request.user.id)
+        user_id = int(user_id)
+        posts = Post.objects.filter(user__id=user_id)
+        base_url = "?action=show_user&user_id=%s&show_as=" % user_id
+        if show_as_posts:
+            context["posts"] = posts.filter(topic__in=topics)
+            context["as_topic_url"] = base_url + "topics"
+        else:
+            # show as topic
+            # FIXME: This should be speed up. This is not lazy:
+            user_topics = []
+            for post in posts:
+                topic = post.topic
+                if topic in topics and topic not in user_topics:
+                    user_topics.append(topic)
+            context["topics"] = user_topics
+            context["as_post_url"] = base_url + "posts"
     elif action == 'search':
         keywords = request.GET.get('keywords')
         author = request.GET.get('author')
@@ -189,15 +213,18 @@ def search(request):
 
         posts = query.order_by(order)
 
-        if request.GET.get("show_as") == "posts":
-            return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
+        if not show_as_posts:
+            # TODO: We have here a problem to get a list of topics without double entries.
+            # Maybe we must add a search index over topics?
 
-        # Info: If whoosh backend used, setup HAYSTACK_ITERATOR_LOAD_PER_QUERY
-        #    to a higher number to speed up
-        post_pks = posts.values_list("pk", flat=True)
-        topics = Topic.objects.filter(posts__in=post_pks).distinct()
+            # Info: If whoosh backend used, setup HAYSTACK_ITERATOR_LOAD_PER_QUERY
+            #    to a higher number to speed up
+            post_pks = posts.values_list("pk", flat=True)
+            context["topics"] = Topic.objects.filter(posts__in=post_pks).distinct()
+        else:
+            context["posts"] = posts
 
-    return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
+    return render(request, template_name, context)
 
 
 

@@ -4,13 +4,24 @@
 {% load i18n %}
 
 {% block content %}
-{% autopaginate results forum_settings.SEARCH_PAGE_SIZE %}
+{% autopaginate topics forum_settings.SEARCH_PAGE_SIZE %}
 <div class="linkst">
 	<div class="inbox">
 		<p class="pagelink">{% paginate %}</p>
 		<div class="clearer"></div>
 	</div>
 </div>
+
+{% if as_post_url %}
+<div id="messages" class="block">
+    <h2><span>{% trans "Links" %}</span></h2>
+    <div class="box">
+        <div class="inbox">
+            <a href="{{ as_post_url }}">{% trans "Display as post list." %}</a>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div id="vf" class="blocktable">
 	<h2><span>{% trans "Search results" %}</span></h2>
@@ -26,7 +37,7 @@
 				</tr>
 			</thead>
 			<tbody>
-			{% for topic in results %}
+			{% for topic in topics %}
 				<tr {% if topic|has_unreads:user %}class="inew"{% endif %} {% if topic.closed %}class="iclosed"{% endif %}>
 					<td class="tcl">
 						<div class="intd">
@@ -61,16 +72,4 @@
 		<div class="clearer"></div>
 	</div>
 </div>
-{% endblock %}
-
-{% block controls %}
-				<dl id="searchlinks" class="conl">
-					<dt><strong>{% trans "Search links" %}</strong></dt>
-					<dd><a href="{% url djangobb:search %}?action=show_24h">{% trans "Show recent posts" %}</a></dd>
-					<dd><a href="{% url djangobb:search %}?action=show_unanswered">{% trans "Show unanswered posts" %}</a></dd>
-					{% if user.is_authenticated %}
-					<dd><a href="{% url djangobb:search %}?action=show_subscriptions">{% trans "Show your subscribed topics" %}</a></dd>
-					<dd><a href="{% url djangobb:search %}?action=show_user">{% trans "Show your topics" %}</a></dd>
-					{% endif %}
-				</dl>
 {% endblock %}
