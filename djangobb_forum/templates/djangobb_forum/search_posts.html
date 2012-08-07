@@ -12,16 +12,14 @@
 	</div>
 </div>
 
-{% if as_topic_url %}
 <div id="messages" class="block">
-    <h2><span>{% trans "Links" %}</span></h2>
+    <h2><span>{% trans "Search type" %}</span></h2>
     <div class="box">
         <div class="inbox">
-            <a href="{{ as_topic_url }}">{% trans "Display as topic list." %}</a>
+            <a href="{{ as_topic_url }}">{% trans "Show results as topic list." %}</a>
         </div>
     </div>
 </div>
-{% endif %}
 
 {% for post in posts %}
 {% if post.object %}
