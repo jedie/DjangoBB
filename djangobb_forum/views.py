@@ -133,6 +133,9 @@ def search(request):
                Q(forum__category__groups__in=groups) | \
                Q(forum__category__groups__isnull=True))
 
+    base_url = None
+    generic_view_switch = True
+
     action = request.GET['action']
     if action == 'show_24h':
         date = datetime.today() - timedelta(1)
@@ -148,21 +151,18 @@ def search(request):
         else:
             #searching more than forum_settings.SEARCH_PAGE_SIZE in this way - not good idea :]
             topics = [topic for topic in topics[:forum_settings.SEARCH_PAGE_SIZE] if forum_extras.has_unreads(topic, request.user)]
-        context["topics"] = topics
+
     elif action == 'show_unanswered':
-        context["topics"] = topics.filter(post_count=1)
+        topics = topics.filter(post_count=1)
     elif action == 'show_subscriptions':
-        context["topics"] = topics.filter(subscribers__id=request.user.id)
+        topics = topics.filter(subscribers__id=request.user.id)
     elif action == 'show_user':
         # Show all topics started by the current user
         user_id = request.GET.get("user_id", request.user.id)
         user_id = int(user_id)
         posts = Post.objects.filter(user__id=user_id)
         base_url = "?action=show_user&user_id=%s&show_as=" % user_id
-        if show_as_posts:
-            context["posts"] = posts.filter(topic__in=topics)
-            context["as_topic_url"] = base_url + "topics"
-        else:
+        if not show_as_posts:
             # show as topic
             # FIXME: This should be speed up. This is not lazy:
             user_topics = []
@@ -170,18 +170,17 @@ def search(request):
                 topic = post.topic
                 if topic in topics and topic not in user_topics:
                     user_topics.append(topic)
-            context["topics"] = user_topics
-            context["as_post_url"] = base_url + "posts"
+            topics = user_topics
     elif action == 'search':
         keywords = request.GET.get('keywords')
         author = request.GET.get('author')
+        if not (keywords or author):
+            return HttpResponseRedirect(reverse('djangobb:search'))
+
         forum = request.GET.get('forum')
         search_in = request.GET.get('search_in')
         sort_by = request.GET.get('sort_by')
         sort_dir = request.GET.get('sort_dir')
-
-        if not (keywords or author):
-            return HttpResponseRedirect(reverse('djangobb:search'))
 
         query = SearchQuerySet().models(Post)
 
@@ -223,6 +222,20 @@ def search(request):
             context["topics"] = Topic.objects.filter(posts__in=post_pks).distinct()
         else:
             context["posts"] = posts
+
+        generic_view_switch = False # TODO: use forms for it
+
+
+    if generic_view_switch:
+        if base_url is None:
+            base_url = "?action=%s&show_as=" % action
+
+        if show_as_posts:
+            context["posts"] = Post.objects.filter(topic__in=topics).order_by('-created')
+            context["as_topic_url"] = base_url + "topics"
+        else:
+            context["as_post_url"] = base_url + "posts"
+            context["topics"] = topics
 
     return render(request, template_name, context)
 
