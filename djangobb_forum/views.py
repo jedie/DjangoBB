@@ -28,6 +28,7 @@ from djangobb_forum.templatetags.forum_extras import forum_moderated_by
 
 from haystack.query import SearchQuerySet, SQ
 from django.contrib import messages
+from django.core.exceptions import SuspiciousOperation
 
 
 def index(request, full=True):
@@ -111,89 +112,93 @@ def moderate(request, forum_id):
 
 def search(request):
     # TODO: move to form
-    if 'action' in request.GET:
-        action = request.GET['action']
-        #FIXME: show_user for anonymous raise exception, 
-        #django bug http://code.djangoproject.com/changeset/14087 :|
-        groups = request.user.groups.all() or [] #removed after django > 1.2.3 release
-        topics = Topic.objects.filter(
-                   Q(forum__category__groups__in=groups) | \
-                   Q(forum__category__groups__isnull=True))
-        if action == 'show_24h':
-            date = datetime.today() - timedelta(1)
-            topics = topics.filter(created__gte=date)
-        elif action == 'show_new':
-            try:
-                last_read = PostTracking.objects.get(user=request.user).last_read
-            except PostTracking.DoesNotExist:
-                last_read = None
-            if last_read:
-                topics = topics.filter(last_post__updated__gte=last_read).all()
-            else:
-                #searching more than forum_settings.SEARCH_PAGE_SIZE in this way - not good idea :]
-                topics = [topic for topic in topics[:forum_settings.SEARCH_PAGE_SIZE] if forum_extras.has_unreads(topic, request.user)]
-        elif action == 'show_unanswered':
-            topics = topics.filter(post_count=1)
-        elif action == 'show_subscriptions':
-            topics = topics.filter(subscribers__id=request.user.id)
-        elif action == 'show_user':
-            user_id = request.GET['user_id']
-            posts = Post.objects.filter(user__id=user_id)
-            topics = [post.topic for post in posts if post.topic in topics]
-        elif action == 'search':
-            keywords = request.GET.get('keywords')
-            author = request.GET.get('author')
-            forum = request.GET.get('forum')
-            search_in = request.GET.get('search_in')
-            sort_by = request.GET.get('sort_by')
-            sort_dir = request.GET.get('sort_dir')
-
-            if not (keywords or author):
-                return HttpResponseRedirect(reverse('djangobb:search'))
-
-            query = SearchQuerySet().models(Post)
-
-            if author:
-                query = query.filter(author__username=author)
-
-            if forum != u'0':
-                query = query.filter(forum__id=forum)
-
-            if keywords:
-                if search_in == 'all':
-                    query = query.filter(SQ(topic=keywords) | SQ(text=keywords))
-                elif search_in == 'message':
-                    query = query.filter(text=keywords)
-                elif search_in == 'topic':
-                    query = query.filter(topic=keywords)
-
-            # add exlusions for categories user does not have access too
-            for category in Category.objects.all():
-                if not category.has_access(request.user):
-                    query = query.exclude(category=category)
-
-            order = {'0': 'created',
-                     '1': 'author',
-                     '2': 'topic',
-                     '3': 'forum'}.get(sort_by, 'created')
-            if sort_dir == 'DESC':
-                order = '-' + order
-
-            posts = query.order_by(order)
-
-            if 'topics' in request.GET['show_as']:
-                return render(request, 'djangobb_forum/search_topics.html', {
-                    'results': TopicFromPostResult(posts)
-                })
-            elif 'posts' in request.GET['show_as']:
-                return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
-
-        return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
-    else:
+    if not 'action' in request.GET:
         form = PostSearchForm()
         return render(request, 'djangobb_forum/search_form.html', {'categories': Category.objects.all(),
                 'form': form,
                 })
+
+    #FIXME: show_user for anonymous raise exception, 
+    #django bug http://code.djangoproject.com/changeset/14087 :|
+    groups = request.user.groups.all() or [] #removed after django > 1.2.3 release
+    topics = Topic.objects.filter(
+               Q(forum__category__groups__in=groups) | \
+               Q(forum__category__groups__isnull=True))
+
+    action = request.GET['action']
+    if action == 'show_24h':
+        date = datetime.today() - timedelta(1)
+        topics = topics.filter(created__gte=date)
+    elif action == 'show_new':
+        try:
+            last_read = PostTracking.objects.get(user=request.user).last_read
+        except PostTracking.DoesNotExist:
+            last_read = None
+        if last_read:
+            topics = topics.filter(last_post__updated__gte=last_read).all()
+        else:
+            #searching more than forum_settings.SEARCH_PAGE_SIZE in this way - not good idea :]
+            topics = [topic for topic in topics[:forum_settings.SEARCH_PAGE_SIZE] if forum_extras.has_unreads(topic, request.user)]
+    elif action == 'show_unanswered':
+        topics = topics.filter(post_count=1)
+    elif action == 'show_subscriptions':
+        topics = topics.filter(subscribers__id=request.user.id)
+    elif action == 'show_user':
+        # Show all topics started by the current user
+        user = request.user
+        if not user.is_authenticated():
+            raise SuspiciousOperation("Only available for authenticated users.")
+        topics = topics.filter(user=user)
+    elif action == 'search':
+        keywords = request.GET.get('keywords')
+        author = request.GET.get('author')
+        forum = request.GET.get('forum')
+        search_in = request.GET.get('search_in')
+        sort_by = request.GET.get('sort_by')
+        sort_dir = request.GET.get('sort_dir')
+
+        if not (keywords or author):
+            return HttpResponseRedirect(reverse('djangobb:search'))
+
+        query = SearchQuerySet().models(Post)
+
+        if author:
+            query = query.filter(author__username=author)
+
+        if forum != u'0':
+            query = query.filter(forum__id=forum)
+
+        if keywords:
+            if search_in == 'all':
+                query = query.filter(SQ(topic=keywords) | SQ(text=keywords))
+            elif search_in == 'message':
+                query = query.filter(text=keywords)
+            elif search_in == 'topic':
+                query = query.filter(topic=keywords)
+
+        # add exlusions for categories user does not have access too
+        for category in Category.objects.all():
+            if not category.has_access(request.user):
+                query = query.exclude(category=category)
+
+        order = {'0': 'created',
+                 '1': 'author',
+                 '2': 'topic',
+                 '3': 'forum'}.get(sort_by, 'created')
+        if sort_dir == 'DESC':
+            order = '-' + order
+
+        posts = query.order_by(order)
+
+        if 'topics' in request.GET['show_as']:
+            return render(request, 'djangobb_forum/search_topics.html', {
+                'results': TopicFromPostResult(posts)
+            })
+        elif 'posts' in request.GET['show_as']:
+            return render(request, 'djangobb_forum/search_posts.html', {'results': posts})
+
+    return render(request, 'djangobb_forum/search_topics.html', {'results': topics})
+
 
 
 @login_required
