@@ -110,12 +110,15 @@ def moderate(request, forum_id):
 
 
 def search(request):
-    # TODO: move to form
-    if not 'action' in request.GET:
-        form = PostSearchForm()
+    # TODO: used forms in every search type
+
+    def _render_search_form(form=None):
         return render(request, 'djangobb_forum/search_form.html', {'categories': Category.objects.all(),
                 'form': form,
                 })
+
+    if not 'action' in request.GET:
+        return _render_search_form(form=PostSearchForm())
 
     if request.GET.get("show_as") == "posts":
         show_as_posts = True
@@ -134,13 +137,12 @@ def search(request):
                Q(forum__category__groups__isnull=True))
 
     base_url = None
-    generic_view_switch = True
+    _generic_context = True
 
     action = request.GET['action']
     if action == 'show_24h':
         date = datetime.today() - timedelta(1)
         topics = topics.filter(created__gte=date)
-        context["topics"] = topics
     elif action == 'show_new':
         try:
             last_read = PostTracking.objects.get(user=request.user).last_read
@@ -172,15 +174,16 @@ def search(request):
                     user_topics.append(topic)
             topics = user_topics
     elif action == 'search':
-        keywords = request.GET.get('keywords')
-        author = request.GET.get('author')
-        if not (keywords or author):
-            return HttpResponseRedirect(reverse('djangobb:search'))
+        form = PostSearchForm(request.GET)
+        if not form.is_valid():
+            return _render_search_form(form)
 
-        forum = request.GET.get('forum')
-        search_in = request.GET.get('search_in')
-        sort_by = request.GET.get('sort_by')
-        sort_dir = request.GET.get('sort_dir')
+        keywords = form.cleaned_data['keywords']
+        author = form.cleaned_data['author']
+        forum = form.cleaned_data['forum']
+        search_in = form.cleaned_data['search_in']
+        sort_by = form.cleaned_data['sort_by']
+        sort_dir = form.cleaned_data['sort_dir']
 
         query = SearchQuerySet().models(Post)
 
@@ -223,19 +226,24 @@ def search(request):
         else:
             context["posts"] = posts
 
-        generic_view_switch = False # TODO: use forms for it
+        get_query_dict = request.GET.copy()
+        get_query_dict.pop("show_as")
+        base_url = "?%s&show_as=" % get_query_dict.urlencode()
+        _generic_context = False
 
-
-    if generic_view_switch:
-        if base_url is None:
-            base_url = "?action=%s&show_as=" % action
-
+    if _generic_context:
         if show_as_posts:
             context["posts"] = Post.objects.filter(topic__in=topics).order_by('-created')
-            context["as_topic_url"] = base_url + "topics"
         else:
-            context["as_post_url"] = base_url + "posts"
             context["topics"] = topics
+
+    if base_url is None:
+        base_url = "?action=%s&show_as=" % action
+
+    if show_as_posts:
+        context["as_topic_url"] = base_url + "topics"
+    else:
+        context["as_post_url"] = base_url + "posts"
 
     return render(request, template_name, context)
 
