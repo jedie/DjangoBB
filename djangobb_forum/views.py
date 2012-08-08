@@ -3,6 +3,7 @@
 import math
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -15,6 +16,7 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect, HttpRespons
 from django.shortcuts import get_object_or_404, render
 from django.utils.encoding import smart_str
 from django.utils.translation import ugettext as _
+from django.utils.tzinfo import FixedOffset
 from django.views.decorators.csrf import csrf_exempt
 
 from haystack.query import SearchQuerySet, SQ
@@ -28,8 +30,6 @@ from djangobb_forum.models import Category, Forum, Topic, Post, Reputation, \
 from djangobb_forum.templatetags import forum_extras
 from djangobb_forum.templatetags.forum_extras import forum_moderated_by
 from djangobb_forum.util import build_form, paginate, set_language, smiles, convert_text_to_html
-
-
 
 
 def index(request, full=True):
@@ -512,15 +512,37 @@ def user(request, username, section='essentials', action=None, template='djangob
     user = get_object_or_404(User, username=username)
     if request.user.is_authenticated() and user == request.user or request.user.is_superuser:
         profile_url = reverse('djangobb:forum_profile_%s' % section, args=[user.username])
-        form = build_form(form_class, request, instance=user.forum_profile, extra_args={'request': request})
+        user_profile = user.forum_profile
+        form = build_form(form_class, request, instance=user_profile, extra_args={'request': request})
         if request.method == 'POST' and form.is_valid():
             form.save()
             messages.success(request, _("User profile saved."))
             return HttpResponseRedirect(profile_url)
-        return render(request, template, {'active_menu': section,
-                'profile': user,
-                'form': form,
-               })
+
+        # FIXME: Is the a easier way to get this:
+        language_code = request.session["django_language"]
+        lang_dict = dict(settings.LANGUAGES)
+        language = lang_dict[language_code]
+
+        context = {
+            'active_menu': section,
+            'profile': user,
+            'form': form,
+            'language': language,
+        }
+
+        if section == 'essentials':
+            time_zone = user_profile.time_zone
+            offset_minutes = time_zone * 60
+            tzinfo = FixedOffset(offset_minutes)
+            now = datetime.now(tzinfo)
+#            now = datetime.utcnow().replace(tzinfo=tzinfo)
+            context.update({
+                "time_zone": time_zone,
+                "now": now,
+            })
+
+        return render(request, template, context)
     else:
         template = 'djangobb_forum/user.html'
         topic_count = Topic.objects.filter(user__id=user.id).count()

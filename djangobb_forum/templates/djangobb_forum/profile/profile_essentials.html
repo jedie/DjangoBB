@@ -2,6 +2,18 @@
 {% load forum_extras %}
 {% load i18n %}
 
+{% block extra_meta %}{{ block.super }}
+<script type="text/javascript">
+$(document).ready(function() {
+    var now = new Date();
+    var local_time = now.toLocaleString()
+    var time_zone_offset = -now.getTimezoneOffset() / 60;
+    var info = "<p><small>Your local time in browser is <strong>"+ local_time +"</strong> with your local time zone: <strong>GMT " + time_zone_offset + "</strong></small></p>";
+    $("#id_time_zone").after(info);
+});
+</script>
+{% endblock %}
+
 {% block content %}
 <div id="profile" class="block2col">
 	{% include 'djangobb_forum/profile/profile_menu.html' %}
@@ -63,12 +75,16 @@
 								{% trans "Timezone: For the forum to display times correctly you must select your local timezone." %}<br>
 							<br>
 							{{ form.time_zone }}
+                            
+							<p><small>
+							    Local time from server is <strong>{{ now|date:"DATETIME_FORMAT" }}</strong> generated with time zone offset: <strong>{{ time_zone }}</strong>
+                            </small></p>
 							</label>
 							{{ form.language.errors }}
 							<label>
 								{% trans "Language: You can choose which language you wish to use to view the forum" %}
 							<br>
-							{{ form.language }}
+							{{ form.language }} <small>(current used language: <strong>{{ language }}</strong>)</small>
 							<br></label>
 						</div>
 					</fieldset>
