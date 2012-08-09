@@ -42,12 +42,6 @@
 					<li class="reportlink"><strong><a href="{% url admin:index %}">{% trans "There are new reports" %} ({% new_reports %})</a></strong></li>
 				{% endif %}
 			</ul>
-			{% if user.is_authenticated %}
-				<ul class="conr">
-					<li><a href="{% url djangobb:search %}?action=show_new">{% trans "Show new posts since last visit" %}</a></li>
-					<li><a href="{% url djangobb:misc %}?action=markread">{% trans "Mark all topics as read" %}</a></li>
-				</ul>
-			{% endif %}
 			<div class="clearer"></div>
 		</div>
 	</div>

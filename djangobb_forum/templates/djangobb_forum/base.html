@@ -80,12 +80,23 @@
             <div class="inbox">
                 {% block controls %}
                     <dl id="searchlinks" class="conl">
-                        <dt><strong>{% trans "Search links" %}</strong></dt>
-                        <dd><a href="{% url djangobb:search %}?action=show_24h">{% trans "Show recent posts" %}</a></dd>
-                        <dd><a href="{% url djangobb:search %}?action=show_unanswered">{% trans "Show unanswered posts" %}</a></dd>
+                        <strong>{% trans "Search links" %}</strong>
+                        <dd>
+                            <a title="{% trans "Show recent posts since 24h" %}" href="{% url djangobb:search %}?action=show_24h">{% trans "recent posts" %}</a>
+                            |
+                            <a title="{% trans "Show unanswered posts" %}" href="{% url djangobb:search %}?action=show_unanswered">{% trans "unanswered posts" %}</a>
+                        </dd>
                         {% if user.is_authenticated %}
-                        <dd><a href="{% url djangobb:search %}?action=show_subscriptions">{% trans "Show your subscribed topics" %}</a></dd>
-                        <dd>{% trans "Show your" %} <a href="{% url djangobb:search %}?action=show_user&show_as=topics">{% trans "topics" %}</a>/<a href="{% url djangobb:search %}?action=show_user&show_as=posts">{% trans "posts" %}</a></dd>
+                        <dd>
+                            <a title="{% trans "Show new posts since last visit" %}" href="{% url djangobb:search %}?action=show_new">{% trans "new posts since last visit" %}</a>
+                            |
+                            <a href="{% url djangobb:misc %}?action=markread">{% trans "Mark all topics as read" %}</a>
+                        </dd>
+                        <dd>
+                            <a title="{% trans "Show subscribed topics" %}" href="{% url djangobb:search %}?action=show_subscriptions">{% trans "subscribed topics" %}</a>
+                            |
+                            <a title="{% trans "Show your posts" %}" href="{% url djangobb:search %}?action=show_user&show_as=topics">{% trans "your posts" %}</a>
+                        </dd>
                         {% endif %}
                     </dl>
                 {% endblock controls %}
