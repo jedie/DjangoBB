@@ -16,6 +16,7 @@ from django.utils.simplejson import JSONEncoder
 from django.template.defaultfilters import urlize as django_urlize
 from django.core.paginator import Paginator, EmptyPage, InvalidPage
 from django.contrib.sites.models import Site
+from django.template.loader import render_to_string
 
 from postmarkup.parser import create, TagBase, _escape_no_breaks, _escape
 
@@ -234,44 +235,58 @@ class CodeTag(TagBase):
     
     This fixed the "missing empty new line" bug in postmarkup, too.
     """
+    def simple_highlight(self, contents):
+        """
+        display source code similar to pygments.
+        So CSS selector works on them in the same way. 
+        """
+        contents = _escape_no_breaks(contents)
+        line_count = len(contents.splitlines()) + 1
+        lineno = "".join(["%i\n" % no for no in range(1, line_count)])
+        context = {
+            "lineno": lineno,
+            "code": contents,
+        }
+        hcontents = render_to_string("djangobb_forum/includes/code_without_pygments.html", context)
+        return hcontents
+
+    def _add_line_seperators(self, matchobj):
+        prefix, code, suffix = matchobj.groups()
+
+        code = "\n".join([
+            '<span class="line %i">%s</span>' % (no, line)
+            for no, line in enumerate(code.splitlines(), 1)
+        ])
+
+        return prefix + code + suffix
+
     def render_open(self, parser, node_index):
         contents = self.get_contents(parser).strip(u'\n')
         self.skip_contents(parser)
 
         if not pygments_available:
-            contents = _escape_no_breaks(contents)
-            hcontents = u'<div class="code"><pre>%s</pre></div>' % contents
+            hcontents = self.simple_highlight(contents)
         else:
             try:
                 lexer = get_lexer_by_name(self.params)
             except ClassNotFound:
-                contents = _escape(contents)
-                hcontents = u'<div class="code"><pre>%s</pre></div>' % contents
+                hcontents = self.simple_highlight(contents)
             else:
                 formatter = HtmlFormatter(linenos=True, cssclass=u"code")
                 hcontents = highlight(contents, lexer, formatter)
                 hcontents = hcontents.strip()
 
-        def add_line_seperators(matchobj):
-            prefix, code, suffix = matchobj.groups()
-
-            code = "\n".join([
-                '<span class="line %i">%s</span>' % (no, line)
-                for no, line in enumerate(code.splitlines())
-            ])
-
-            return prefix + code + suffix
-
-        hcontents = PRE_REGEX.sub(add_line_seperators, hcontents)
+        hcontents = PRE_REGEX.sub(self._add_line_seperators, hcontents)
 
         return hcontents
 
 
-# Same as origin: But we use your own class to highlight source code, becuase:
+# Same as origin: But we use your own class to highlight source code, because:
 #    1. add to every line a <span> tag, for CSS hover effect
 #       see also: https://bitbucket.org/birkenfeld/pygments-main/pull-request/82/
 #    2. Fix the "missing empty new line" bug in postmarkup
 #       see also: https://bitbucket.org/slav0nic/djangobb/pull-request/10/
+#    3. We format non pygments code in similar html
 _postmarkup = create(annotate_links=False, exclude="code")
 _postmarkup.add_tag(CodeTag, "code")
 render_bbcode = _postmarkup.render_to_html
