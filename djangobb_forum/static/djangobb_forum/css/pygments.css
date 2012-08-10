@@ -3,20 +3,31 @@ table.codetable * {
     margin: 0;
     border: 0;
 }
-table.codetable, linenos {
+div.code {
+    background-color: #fff;
+    color: #000;
+}
+table.codetable, table.codetable .linenos {
     font: 10px "Monospaced", monospace;
-    padding: 5px;
-    margin: 2px;
     max-height: 450px;
     overflow: auto;
     background: #fff;
-    color: #000;
 }
 table.codetable {
+    padding: 5px;
+    margin: 2px;
     display: block;
     border: solid #000000 1px;
 }
-.linenos { width: 1.5em;}
+table.codetable .linenos {
+    width: 1.5em;
+}
+table.codetable .line {
+    background-color: #fff;
+}
+table.codetable .line:hover {
+    background-color: #eee;
+}
 .hll { background-color: #ffffcc }
 .c { color: #408080; font-style: italic } /* Comment */
 .err { border: 1px solid #FF0000 } /* Error */

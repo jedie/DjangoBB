@@ -2,7 +2,6 @@
 
 import re
 from HTMLParser import HTMLParser
-from postmarkup.parser import create, pygments_available
 try:
     import markdown
 except ImportError:
@@ -18,7 +17,18 @@ from django.template.defaultfilters import urlize as django_urlize
 from django.core.paginator import Paginator, EmptyPage, InvalidPage
 from django.contrib.sites.models import Site
 
+from postmarkup.parser import create, TagBase, _escape_no_breaks, _escape
+
 from djangobb_forum import settings as forum_settings
+
+try:
+    from pygments import highlight
+    from pygments.lexers import get_lexer_by_name, ClassNotFound
+    from pygments.formatters import HtmlFormatter
+except ImportError:
+    pygments_available = False
+else:
+    pygments_available = True
 
 
 #compile smiles regexp
@@ -215,10 +225,55 @@ def set_language(request, language):
         request.session['django_language'] = language
 
 
-# Same as origin render_bbcode, but turn on pygments_line_numbers
-# Note: There is a bug in postmarkup that squash newline in sourcecode
-#     Fixed in fork here: https://github.com/frol/postmarkup
-_postmarkup = create(use_pygments=pygments_available, annotate_links=False, pygments_line_numbers=True)
+PRE_REGEX = re.compile(r"^(.*<pre>)(.*)(</pre>.*)$", re.DOTALL | re.MULTILINE)
+
+class CodeTag(TagBase):
+    """
+    render code with pygments if available
+    * add a <span> tag to every line
+    
+    This fixed the "missing empty new line" bug in postmarkup, too.
+    """
+    def render_open(self, parser, node_index):
+        contents = self.get_contents(parser).strip(u'\n')
+        self.skip_contents(parser)
+
+        if not pygments_available:
+            contents = _escape_no_breaks(contents)
+            hcontents = u'<div class="code"><pre>%s</pre></div>' % contents
+        else:
+            try:
+                lexer = get_lexer_by_name(self.params)
+            except ClassNotFound:
+                contents = _escape(contents)
+                hcontents = u'<div class="code"><pre>%s</pre></div>' % contents
+            else:
+                formatter = HtmlFormatter(linenos=True, cssclass=u"code")
+                hcontents = highlight(contents, lexer, formatter)
+                hcontents = hcontents.strip()
+
+        def add_line_seperators(matchobj):
+            prefix, code, suffix = matchobj.groups()
+
+            code = "\n".join([
+                '<span class="line %i">%s</span>' % (no, line)
+                for no, line in enumerate(code.splitlines())
+            ])
+
+            return prefix + code + suffix
+
+        hcontents = PRE_REGEX.sub(add_line_seperators, hcontents)
+
+        return hcontents
+
+
+# Same as origin: But we use your own class to highlight source code, becuase:
+#    1. add to every line a <span> tag, for CSS hover effect
+#       see also: https://bitbucket.org/birkenfeld/pygments-main/pull-request/82/
+#    2. Fix the "missing empty new line" bug in postmarkup
+#       see also: https://bitbucket.org/slav0nic/djangobb/pull-request/10/
+_postmarkup = create(annotate_links=False, exclude="code")
+_postmarkup.add_tag(CodeTag, "code")
 render_bbcode = _postmarkup.render_to_html
 
 
