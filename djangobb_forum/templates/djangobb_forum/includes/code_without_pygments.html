@@ -4,7 +4,9 @@
         <div class="linenodiv"><pre>{{ lineno }}</pre></div>
     </td>
     <td class="code">
-        <div class="code"><pre>{{ code }}</pre></div>
+        <div class="code"><pre>{% for line in lines %}
+<a name="True-{{ forloop.counter }}"></a><span>{{ line }}</span>
+{% endfor %}</pre></div>
     </td>
 </tr>
 </table>

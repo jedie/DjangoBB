@@ -22,12 +22,11 @@ table.codetable {
 table.codetable .linenos {
     width: 1.5em;
 }
-table.codetable .line {
-    background-color: #fff;
-}
-table.codetable .line:hover {
-    background-color: #eee;
-}
+
+/* FIXME: How to highlight the complete line: */
+table.codetable span {background-color: #fff;}
+table.codetable span:hover {background-color: #eee;}
+
 .hll { background-color: #ffffcc }
 .c { color: #408080; font-style: italic } /* Comment */
 .err { border: 1px solid #FF0000 } /* Error */

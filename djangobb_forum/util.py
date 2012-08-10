@@ -18,7 +18,7 @@ from django.core.paginator import Paginator, EmptyPage, InvalidPage
 from django.contrib.sites.models import Site
 from django.template.loader import render_to_string
 
-from postmarkup.parser import create, TagBase, _escape_no_breaks, _escape
+from postmarkup.parser import create, TagBase, _escape_no_breaks
 
 from djangobb_forum import settings as forum_settings
 
@@ -226,8 +226,6 @@ def set_language(request, language):
         request.session['django_language'] = language
 
 
-PRE_REGEX = re.compile(r"^(.*<pre>)(.*)(</pre>.*)$", re.DOTALL | re.MULTILINE)
-
 class CodeTag(TagBase):
     """
     render code with pygments if available
@@ -241,24 +239,15 @@ class CodeTag(TagBase):
         So CSS selector works on them in the same way. 
         """
         contents = _escape_no_breaks(contents)
-        line_count = len(contents.splitlines()) + 1
+        lines = contents.splitlines()
+        line_count = len(lines) + 1
         lineno = "".join(["%i\n" % no for no in range(1, line_count)])
         context = {
             "lineno": lineno,
-            "code": contents,
+            "lines": lines,
         }
         hcontents = render_to_string("djangobb_forum/includes/code_without_pygments.html", context)
         return hcontents
-
-    def _add_line_seperators(self, matchobj):
-        prefix, code, suffix = matchobj.groups()
-
-        code = "\n".join([
-            '<span class="line %i">%s</span>' % (no, line)
-            for no, line in enumerate(code.splitlines(), 1)
-        ])
-
-        return prefix + code + suffix
 
     def render_open(self, parser, node_index):
         contents = self.get_contents(parser).strip(u'\n')
@@ -272,11 +261,11 @@ class CodeTag(TagBase):
             except ClassNotFound:
                 hcontents = self.simple_highlight(contents)
             else:
-                formatter = HtmlFormatter(linenos=True, cssclass=u"code")
+                formatter = HtmlFormatter(cssclass=u"code",
+                    linenos=True, lineanchors=True, anchorlinenos=False
+                )
                 hcontents = highlight(contents, lexer, formatter)
                 hcontents = hcontents.strip()
-
-        hcontents = PRE_REGEX.sub(self._add_line_seperators, hcontents)
 
         return hcontents
 
