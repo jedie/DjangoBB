@@ -1,6 +1,8 @@
+# coding:utf-8
+
 import re
 from HTMLParser import HTMLParser
-from postmarkup import render_bbcode
+from postmarkup.parser import create, pygments_available
 try:
     import markdown
 except ImportError:
@@ -211,6 +213,13 @@ def set_language(request, language):
 
     if check_for_language(language):
         request.session['django_language'] = language
+
+
+# Same as origin render_bbcode, but turn on pygments_line_numbers
+# Note: There is a bug in postmarkup that squash newline in sourcecode
+#     Fixed in fork here: https://github.com/frol/postmarkup
+_postmarkup = create(use_pygments=pygments_available, annotate_links=False, pygments_line_numbers=True)
+render_bbcode = _postmarkup.render_to_html
 
 
 def convert_text_to_html(text, markup):

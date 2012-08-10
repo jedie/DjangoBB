@@ -1,13 +1,22 @@
-div .code {
+table.codetable * {
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+table.codetable, linenos {
     font: 10px "Monospaced", monospace;
-    display: block;
-    color: #000;
-    background: #fff;
-    border: solid #000000 1px;
     padding: 5px;
+    margin: 2px;
     max-height: 450px;
     overflow: auto;
+    background: #fff;
+    color: #000;
 }
+table.codetable {
+    display: block;
+    border: solid #000000 1px;
+}
+.linenos { width: 1.5em;}
 .hll { background-color: #ffffcc }
 .c { color: #408080; font-style: italic } /* Comment */
 .err { border: 1px solid #FF0000 } /* Error */
