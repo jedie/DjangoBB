@@ -3,10 +3,23 @@
 import re
 from HTMLParser import HTMLParser, HTMLParseError
 from postmarkup import render_bbcode
+
+use_markdown = False
+use_markdown2 = False
 try:
-    import markdown
+    # https://github.com/trentm/python-markdown2
+    import markdown2
 except ImportError:
-    pass
+    try:
+        # http://pypi.python.org/pypi/Markdown
+        import markdown
+    except ImportError:
+        pass
+    else:
+        use_markdown = True
+else:
+    use_markdown2 = True
+
 
 from django.conf import settings
 from django.shortcuts import render_to_response
@@ -232,7 +245,10 @@ def convert_text_to_html(text, markup):
     if markup == 'bbcode':
         text = render_bbcode(text)
     elif markup == 'markdown':
-        text = markdown.markdown(text, safe_mode='escape')
+        if use_markdown2:
+            text = markdown2.markdown(text, safe_mode='escape', extras=forum_settings.MARKDOWN2_EXTRAS)
+        elif use_markdown:
+            text = markdown.markdown(text, safe_mode='escape')
     else:
         raise Exception('Invalid markup property: %s' % markup)
     return urlize(text)

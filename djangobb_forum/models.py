@@ -45,10 +45,18 @@ PRIVACY_CHOICES = (
 
 MARKUP_CHOICES = [('bbcode', 'bbcode')]
 try:
-    import markdown
-    MARKUP_CHOICES.append(("markdown", "markdown"))
+    # https://github.com/trentm/python-markdown2
+    import markdown2
 except ImportError:
-    pass
+    try:
+        # http://pypi.python.org/pypi/Markdown
+        import markdown
+    except ImportError:
+        pass
+    else:
+        MARKUP_CHOICES.append(("markdown", "markdown"))
+else:
+    MARKUP_CHOICES.append(("markdown", "markdown2"))
 
 path = os.path.join(settings.STATIC_ROOT, 'djangobb_forum', 'themes')
 if os.path.exists(path):

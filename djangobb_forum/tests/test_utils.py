@@ -1,4 +1,8 @@
-# -*- coding: utf-8 -*-
+# coding: utf-8
+
+
+import unittest
+
 from django.test import TestCase, RequestFactory
 from django.conf import settings
 
@@ -6,11 +10,37 @@ from djangobb_forum.models import Post
 from djangobb_forum.util import urlize, smiles, convert_text_to_html, paginate
 
 
+markdown_installed = False
+markdown2_installed = False
+try:
+    # https://github.com/trentm/python-markdown2
+    import markdown2
+except ImportError:
+    try:
+        # http://pypi.python.org/pypi/Markdown
+        import markdown
+    except ImportError:
+        pass
+    else:
+        markdown_installed = True
+else:
+    markdown2_installed = True
+
+
+try:
+    import pygments
+except ImportError:
+    pygments_installed = False
+else:
+    pygments_installed = True
+
+
 class TestParsers(TestCase):
     def setUp(self):
         self.data_url = "Lorem ipsum dolor sit amet, consectetur http://djangobb.org/ adipiscing elit."
         self.data_smiles = "Lorem ipsum dolor :| sit amet :) <a href=\"http://djangobb.org/\">http://djangobb.org/</a>"
         self.markdown = ""
+        self.markdown2 = "markdown test\n```python\nprint 'it works'\n```\n:)"
         self.bbcode = "[b]Lorem[/b] [code]ipsum :)[/code] =)"
 
     def test_urlize(self):
@@ -24,6 +54,18 @@ class TestParsers(TestCase):
     def test_convert_text_to_html(self):
         bb_data = convert_text_to_html(self.bbcode, 'bbcode')
         self.assertEqual(bb_data, "<strong>Lorem</strong> <div class=\"code\"><pre>ipsum :)</pre></div>=)")
+
+    @unittest.skipUnless(markdown2_installed and pygments_installed, "test only for markdown2 with pygments")
+    def test_markdown2_with_pygments(self):
+        html = convert_text_to_html(self.markdown2, 'markdown')
+        # FIXME: No pygments active here, why?
+        self.assertEqual(html, """<p>markdown test\n<div class="highlight"><pre>python\n<span class="k">print</span> <span class="s">'it works'</span>\n</pre></div>\n:)</p>\n""")
+
+    @unittest.skipUnless(markdown2_installed and not pygments_installed, "test only for markdown2 without pygments")
+    def test_markdown2_without_pygments(self):
+        html = convert_text_to_html(self.markdown2, 'markdown')
+        self.assertEqual(html, "<p>markdown test\n<code>python\nprint 'it works'\n</code>\n:)</p>\n")
+
 
 class TestPaginators(TestCase):
     fixtures = ['test_forum.json']
