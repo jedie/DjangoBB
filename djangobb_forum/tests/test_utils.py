@@ -40,7 +40,7 @@ class TestParsers(TestCase):
         self.data_url = "Lorem ipsum dolor sit amet, consectetur http://djangobb.org/ adipiscing elit."
         self.data_smiles = "Lorem ipsum dolor :| sit amet :) <a href=\"http://djangobb.org/\">http://djangobb.org/</a>"
         self.markdown = ""
-        self.markdown2 = "markdown test\n```python\nprint 'it works'\n```\n:)"
+        self.markdown2 = "markdown test\n\n```python\nprint 'it works'\n```\n\n:)"
         self.bbcode = "[b]Lorem[/b] [code]ipsum :)[/code] =)"
 
     def test_urlize(self):
@@ -58,8 +58,7 @@ class TestParsers(TestCase):
     @unittest.skipUnless(markdown2_installed and pygments_installed, "test only for markdown2 with pygments")
     def test_markdown2_with_pygments(self):
         html = convert_text_to_html(self.markdown2, 'markdown')
-        # FIXME: No pygments active here, why?
-        self.assertEqual(html, """<p>markdown test\n<div class="highlight"><pre>python\n<span class="k">print</span> <span class="s">'it works'</span>\n</pre></div>\n:)</p>\n""")
+        self.assertEqual(html, """<p>markdown test</p>\n\n<div class="codehilite"><pre><code><span class="k">print</span> <span class="s">&#39;it works&#39;</span>\n</code></pre></div>\n\n<p>:)</p>\n""")
 
     @unittest.skipUnless(markdown2_installed and not pygments_installed, "test only for markdown2 without pygments")
     def test_markdown2_without_pygments(self):
